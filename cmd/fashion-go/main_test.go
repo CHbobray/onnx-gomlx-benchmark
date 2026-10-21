@@ -93,12 +93,26 @@ func TestTimingTablesOrderAndRatios(t *testing.T) {
 		"gomlx":   {Throughput: bench.Stats{MeanMs: 100, Runs: 3}, Latency: bench.Stats{MeanMs: 2, Runs: 3}},
 		"pytorch": {Throughput: bench.Stats{MeanMs: 50, Runs: 3}, Latency: bench.Stats{MeanMs: 4, Runs: 3}},
 	}
-	tables := timingTables(engines)
+	tables := timingTables(engines, "go")
 	throughput, latency, _ := strings.Cut(tables, "**Latency**")
 	if strings.Index(throughput, "PyTorch") > strings.Index(throughput, "GoMLX") {
 		t.Error("faster engine should be listed first")
 	}
 	if !strings.Contains(throughput, "2.0x faster") || !strings.Contains(latency, "2.0x slower") {
 		t.Errorf("unexpected ratios:\n%s", tables)
+	}
+}
+
+func TestGoEngineNameFollowsBackend(t *testing.T) {
+	cases := map[string]string{
+		"go":              "Go + GoMLX (pure-Go backend)",
+		"go:ops_parallel": "Go + GoMLX (pure-Go backend)",
+		"onnx":            "Go + GoMLX (ONNX Runtime backend)",
+		"custom":          "Go + GoMLX (custom backend)",
+	}
+	for config, want := range cases {
+		if got := goEngineName(config); got != want {
+			t.Errorf("goEngineName(%q) = %q, want %q", config, got, want)
+		}
 	}
 }

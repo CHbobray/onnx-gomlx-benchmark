@@ -1,0 +1,34 @@
+Loaded 10000 test images (28x28) from data/t10k-images-idx3-ubyte.gz
+Loaded ONNX model models/fashion_cnn.onnx into GoMLX (backend "onnx") in 58 ms
+First pass (includes graph compilation): 315 ms, accuracy 0.9034
+
+Go vs Python predictions on 10000 images
+  predicted-class agreement : 1.0000 (0 differ)
+  max |logit difference|    : 6.68e-06 (tolerance 1e-03)
+  mean |logit difference|   : 5.87e-07
+  accuracy  Go 0.9034   Python 0.9034
+  RESULT: MATCH - Go reproduces the Python model's predictions
+
+Benchmarking: 3 warm-up + 30 timed runs of 10000 images, batch size 1000...
+Measuring single-image latency over 500 requests...
+
+Inference timing on linux amd64 (batch size 1000):
+
+**Throughput** - full 10000-image test set per run
+
+| Engine | Mean (ms) | Std (ms) | Median (ms) | p95 (ms) | Images/s | vs Go | Runs |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Python + ONNX Runtime | 179.6 | 14.2 | 175.2 | 207.8 | 55684 | 1.2x faster | 30 |
+| Go + GoMLX (ONNX Runtime backend) | 222.8 | 30.5 | 219.0 | 277.8 | 44889 | 1.0x | 30 |
+| Python + PyTorch | 1506.0 | 79.9 | 1515.7 | 1611.6 | 6640 | 6.8x slower | 30 |
+
+**Latency** - one image per call (a single user request)
+
+| Engine | Mean (ms) | Std (ms) | Median (ms) | p95 (ms) | Requests/s | vs Go | Runs |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Python + ONNX Runtime | 0.050 | 0.012 | 0.047 | 0.070 | 20078 | 1.6x faster | 500 |
+| Go + GoMLX (ONNX Runtime backend) | 0.078 | 0.120 | 0.060 | 0.145 | 12860 | 1.0x | 500 |
+| Python + PyTorch | 0.183 | 0.044 | 0.166 | 0.260 | 5454 | 2.4x slower | 500 |
+
+Go memory: heap in use 21.2 MB, obtained from OS 56.9 MB, 66 GCs
+Results written to results/onnx-backend

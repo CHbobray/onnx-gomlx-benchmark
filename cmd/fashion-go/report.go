@@ -51,10 +51,26 @@ type pythonTiming struct {
 }
 
 // Display names for the engines, in the order they appear in tables.
+// The Go entry's name is filled in from the backend actually used.
 var engineOrder = []struct{ key, name string }{
-	{"gomlx", "Go + GoMLX (pure-Go backend)"},
+	{"gomlx", ""},
 	{"pytorch", "Python + PyTorch"},
 	{"onnxruntime", "Python + ONNX Runtime"},
+}
+
+// goEngineName describes the GoMLX backend from its configuration string,
+// e.g. "go", "go:ops_parallel", or "onnx".
+func goEngineName(backendConfig string) string {
+	name, _, _ := strings.Cut(backendConfig, ":")
+	switch name {
+	case "go":
+		return "Go + GoMLX (pure-Go backend)"
+	case "onnx":
+		return "Go + GoMLX (ONNX Runtime backend)"
+	case "xla":
+		return "Go + GoMLX (XLA backend)"
+	}
+	return "Go + GoMLX (" + backendConfig + " backend)"
 }
 
 func newComparison(report compare.Report) *comparison {
@@ -115,26 +131,30 @@ func collectEngines(goResult goTiming, python *pythonTiming) map[string]engineTi
 }
 
 // timingTables renders Markdown tables for throughput and single-image latency.
-func timingTables(engines map[string]engineTiming) string {
+func timingTables(engines map[string]engineTiming, goBackend string) string {
 	var out strings.Builder
 	images := engines["gomlx"].Throughput.ImagesPerRun
 	fmt.Fprintf(&out, "**Throughput** - full %d-image test set per run\n\n", images)
-	writeTable(&out, engines, func(t engineTiming) bench.Stats { return t.Throughput }, "Images/s")
+	writeTable(&out, engines, func(t engineTiming) bench.Stats { return t.Throughput }, "Images/s", goBackend)
 	fmt.Fprintf(&out, "\n**Latency** - one image per call (a single user request)\n\n")
-	writeTable(&out, engines, func(t engineTiming) bench.Stats { return t.Latency }, "Requests/s")
+	writeTable(&out, engines, func(t engineTiming) bench.Stats { return t.Latency }, "Requests/s", goBackend)
 	return out.String()
 }
 
 func writeTable(out *strings.Builder, engines map[string]engineTiming,
-	pick func(engineTiming) bench.Stats, rateLabel string) {
+	pick func(engineTiming) bench.Stats, rateLabel, goBackend string) {
 
 	goMean := pick(engines["gomlx"]).MeanMs
 	fmt.Fprintf(out, "| Engine | Mean (ms) | Std (ms) | Median (ms) | p95 (ms) | %s | vs Go | Runs |\n", rateLabel)
 	fmt.Fprintf(out, "|---|---:|---:|---:|---:|---:|---:|---:|\n")
 	for _, engine := range orderedEngines(engines, pick) {
 		s := pick(engines[engine.key])
+		name := engine.name
+		if engine.key == "gomlx" {
+			name = goEngineName(goBackend)
+		}
 		fmt.Fprintf(out, "| %s | %s | %s | %s | %s | %.0f | %s | %d |\n",
-			engine.name, formatMs(s.MeanMs), formatMs(s.StdMs), formatMs(s.MedianMs), formatMs(s.P95Ms),
+			name, formatMs(s.MeanMs), formatMs(s.StdMs), formatMs(s.MedianMs), formatMs(s.P95Ms),
 			s.ImagesPerSecond, speedRatio(goMean, s.MeanMs), s.Runs)
 	}
 }

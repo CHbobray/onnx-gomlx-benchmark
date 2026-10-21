@@ -6,6 +6,7 @@ package engine
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/gomlx/compute"
 	_ "github.com/gomlx/compute/gobackend" // registers the pure-Go "go" backend
@@ -16,8 +17,18 @@ import (
 	"github.com/gomlx/onnx-gomlx/onnx/parser"
 )
 
-// BackendConfig selects GoMLX's pure-Go backend.
-const BackendConfig = "go"
+// DefaultBackend selects GoMLX's pure-Go backend. Set the GOMLX_BACKEND
+// environment variable to override it, e.g. "go:parallelism=8,ops_parallel",
+// or "onnx" in a build made with -tags onnx (see backend_onnx.go).
+const DefaultBackend = "go"
+
+// BackendConfig returns the backend configuration that Load will use.
+func BackendConfig() string {
+	if config := os.Getenv(compute.ConfigEnvVar); config != "" {
+		return config
+	}
+	return DefaultBackend
+}
 
 // Classifier is an ONNX model compiled to a GoMLX computation graph.
 //
@@ -47,9 +58,9 @@ func Load(path string) (*Classifier, error) {
 		return nil, fmt.Errorf("%s: expected output shaped [batch, classes], got %s", path, outputShapes[0])
 	}
 
-	backend, err := compute.NewWithConfig(BackendConfig)
+	backend, err := compute.NewWithConfig(BackendConfig())
 	if err != nil {
-		return nil, fmt.Errorf("starting GoMLX backend %q: %w", BackendConfig, err)
+		return nil, fmt.Errorf("starting GoMLX backend %q: %w", BackendConfig(), err)
 	}
 	store := model.NewStore()
 	if err := onnxModel.VariablesToScope(store.RootScope()); err != nil {

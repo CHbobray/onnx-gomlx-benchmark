@@ -31,7 +31,9 @@ if (-not $SkipTests) {
 Write-Host "`nBuilding bin\fashion-go.exe..."
 New-Item -ItemType Directory -Force -Path bin | Out-Null
 # CGO_ENABLED=0: the pure-Go GoMLX backend needs no C compiler, so the .exe is self-contained.
+# GOEXPERIMENT=simd: compiles GoMLX's AVX2/AVX-512 kernels (used automatically when the CPU has them).
 $env:CGO_ENABLED = "0"
+$env:GOEXPERIMENT = "simd"
 go build -trimpath -ldflags "-s -w" -o bin\fashion-go.exe .\cmd\fashion-go
 if ($LASTEXITCODE -ne 0) { Write-Error "Build failed." }
 

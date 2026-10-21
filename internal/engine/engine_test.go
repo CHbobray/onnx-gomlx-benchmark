@@ -162,3 +162,14 @@ func BenchmarkPredictBatch(b *testing.B) {
 		}
 	}
 }
+
+func TestBackendConfigHonorsEnvironment(t *testing.T) {
+	t.Setenv("GOMLX_BACKEND", "")
+	if got := BackendConfig(); got != DefaultBackend {
+		t.Errorf("default: got %q, want %q", got, DefaultBackend)
+	}
+	t.Setenv("GOMLX_BACKEND", "go:ops_parallel")
+	if got := BackendConfig(); got != "go:ops_parallel" {
+		t.Errorf("override: got %q", got)
+	}
+}

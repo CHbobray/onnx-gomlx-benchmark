@@ -92,7 +92,7 @@ func run(cfg config) error {
 	}
 	defer classifier.Close()
 	loadMs := msSince(loadStarted)
-	fmt.Printf("Loaded ONNX model %s into GoMLX in %.0f ms\n", cfg.ModelPath, loadMs)
+	fmt.Printf("Loaded ONNX model %s into GoMLX (backend %q) in %.0f ms\n", cfg.ModelPath, engine.BackendConfig(), loadMs)
 
 	firstStarted := time.Now()
 	logits, err := classifier.PredictImages(images, cfg.BatchSize)
@@ -110,7 +110,7 @@ func run(cfg config) error {
 	}
 
 	timing := goTiming{
-		Platform: platformName(), GoVersion: runtime.Version(), Backend: engine.BackendConfig,
+		Platform: platformName(), GoVersion: runtime.Version(), Backend: engine.BackendConfig(),
 		CPUs: runtime.NumCPU(), BatchSize: cfg.BatchSize, Accuracy: accuracy,
 		LoadMs: loadMs, FirstRunMs: firstRunMs,
 	}
@@ -200,7 +200,7 @@ func writeResults(cfg config, timing goTiming) error {
 		fmt.Println("(no Python timing found; run python/predict_and_time.py to include it)")
 		python = nil
 	}
-	table := timingTables(collectEngines(timing, python))
+	table := timingTables(collectEngines(timing, python), timing.Backend)
 	fmt.Printf("\nInference timing on %s (batch size %d):\n\n%s", platformName(), cfg.BatchSize, table)
 	m := timing.MemoryAfterRun
 	fmt.Printf("\nGo memory: heap in use %.1f MB, obtained from OS %.1f MB, %d GCs\n", m.HeapInUseMB, m.SysMB, m.NumGC)

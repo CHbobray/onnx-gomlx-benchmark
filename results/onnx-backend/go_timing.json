@@ -1,0 +1,44 @@
+{
+  "platform": "linux amd64",
+  "go": "go1.27.3",
+  "gomlx_backend": "onnx",
+  "cpus": 2,
+  "batch_size": 1000,
+  "accuracy": 0.9034,
+  "model_load_ms": 57.558368,
+  "first_run_ms": 315.440518,
+  "throughput": {
+    "runs": 30,
+    "images_per_run": 10000,
+    "mean_ms": 222.77407116666663,
+    "std_ms": 30.49954614946339,
+    "min_ms": 176.022059,
+    "median_ms": 219.0082835,
+    "p95_ms": 277.791206,
+    "max_ms": 327.348249,
+    "images_per_second": 44888.527410887866
+  },
+  "latency": {
+    "runs": 500,
+    "images_per_run": 1,
+    "mean_ms": 0.077759422,
+    "std_ms": 0.12002108510460688,
+    "min_ms": 0.044166,
+    "median_ms": 0.059595999999999996,
+    "p95_ms": 0.145327,
+    "max_ms": 2.625153,
+    "images_per_second": 12860.177895869649
+  },
+  "memory": {
+    "heap_in_use_mb": 21.21875,
+    "total_alloc_mb": 1180.5209884643555,
+    "sys_mb": 56.924095153808594,
+    "num_gc": 66
+  },
+  "comparison_with_python": {
+    "class_agreement": 1,
+    "disagreements": 0,
+    "max_abs_logit_diff": 0.00000667572021484375,
+    "mean_abs_logit_diff": 5.871533355093562e-7
+  }
+}

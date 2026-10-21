@@ -2,11 +2,13 @@
 
 **Question from management:** can we develop deep learning models in Python, export them to a common format, and run them in production with Go?
 
-**Short answer:** *yes for correctness, not yet for speed with the pure-Go engine.*
+**Short answer:** *yes. How fast it runs depends on which GoMLX backend executes the model.*
 
 - A PyTorch convolutional network, exported to ONNX and run by GoMLX in Go, reproduces Python's predictions **exactly**: 10,000 of 10,000 test images get the same class, and the largest difference in any output score is 0.0000076.
-- The pure-Go GoMLX engine is **about 20x slower than PyTorch** and **about 170x slower than ONNX Runtime** on this model. A single prediction still takes only about 3.7 ms, so it is usable for light traffic, but it is not the fast-response option for thousands of users.
-- The Go program is a **single 14 MB Windows `.exe`** with no Python, C libraries, or runtime installs, and it used about 340 MB of memory versus about 880 MB for the Python process.
+- GoMLX runs a model through interchangeable [backends](#gomlx-backends-tried). The speed results differ a great deal between them:
+  - **ONNX Runtime backend** (Linux/macOS; needs cgo): Go classifies the test set **about 7x faster than PyTorch**, within about 25% of ONNX Runtime called from Python.
+  - **Pure-Go backend** (the only one that builds into a dependency-free Windows `.exe`): **about 20x slower than PyTorch**. A single prediction still takes only about 3.7 ms.
+- The pure-Go build is a **single 14 MB Windows `.exe`** with no Python, C libraries, or runtime installs.
 
 Details, numbers, and a recommendation are in [Results](#results) and [Recommendation](#recommendation-for-management).
 
@@ -22,6 +24,7 @@ Details, numbers, and a recommendation are in [Results](#results) and [Recommend
 - [Using the Go application](#using-the-go-application)
 - [Testing, benchmarks, and profiling](#testing-benchmarks-and-profiling)
 - [Results](#results)
+- [GoMLX backends tried](#gomlx-backends-tried)
 - [Recommendation for management](#recommendation-for-management)
 - [Issues found along the way](#issues-found-along-the-way)
 - [Design notes](#design-notes)
@@ -92,6 +95,7 @@ Trained for 5 epochs with Adam, it reaches **90.34% test accuracy**. Normalizati
 ├── internal/                  reusable Go packages, each with unit tests
 │   ├── idx/                   reads IDX image/label files (gzip or raw)
 │   ├── engine/                loads an ONNX classifier into GoMLX and runs it
+│   │                          (backend_onnx.go adds the optional ONNX Runtime backend)
 │   ├── compare/               reads/writes prediction CSVs, measures agreement
 │   └── bench/                 Monte Carlo timing statistics and memory sampling
 │
@@ -103,7 +107,8 @@ Trained for 5 epochs with Adam, it reaches **90.34% test accuracy**. Normalizati
 │   ├── timing_comparison.md     side-by-side tables (written by the Go app)
 │   ├── python_run_log.txt       console output of the Python run
 │   ├── go_run_log.txt           console output of the Go run
-│   └── go_profile_summary.txt   CPU and heap profile of the Go app
+│   ├── go_profile_summary.txt   CPU and heap profile of the Go app
+│   └── onnx-backend/            the same Go run on GoMLX's ONNX Runtime backend
 │
 └── docs/                      AI-assistant dialog (see below)
 ```
@@ -120,7 +125,7 @@ Trained for 5 epochs with Adam, it reaches **90.34% test accuracy**. Normalizati
 
 Python packages (`python/requirements.txt`): `numpy`, `torch`, `onnx`, `onnxruntime`, `pytest`, and `psutil` on Windows. All are free; nothing in this project requires a paid service.
 
-Go packages (downloaded automatically by `go build`): [`gomlx`](https://github.com/gomlx/gomlx) v0.28.17, [`onnx-gomlx`](https://github.com/gomlx/onnx-gomlx) v0.5.14, and [`compute`](https://github.com/gomlx/compute) v0.1.14 (GoMLX's backends).
+Go packages (downloaded automatically by `go build`): [`gomlx`](https://github.com/gomlx/gomlx) v0.28.17, [`onnx-gomlx`](https://github.com/gomlx/onnx-gomlx) v0.5.14, [`compute`](https://github.com/gomlx/compute) v0.1.14 (GoMLX's pure-Go backend), and, only for the optional `-tags onnx` build, [`compute-onnx`](https://github.com/gomlx/compute-onnx) v0.1.13.
 
 ---
 
@@ -186,15 +191,15 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 The equivalent single command, without the script:
 
 ```powershell
-$env:CGO_ENABLED="0"; go build -trimpath -ldflags "-s -w" -o bin\fashion-go.exe .\cmd\fashion-go
+$env:CGO_ENABLED="0"; $env:GOEXPERIMENT="simd"; go build -trimpath -ldflags "-s -w" -o bin\fashion-go.exe .\cmd\fashion-go
 ```
 
-`CGO_ENABLED=0` works because the program uses GoMLX's **pure-Go** backend: no C compiler, no DLLs, and no Python on the machine that runs it. The result is one self-contained file of about 14 MB.
+`CGO_ENABLED=0` works because the program uses GoMLX's **pure-Go** backend: no C compiler, no DLLs, and no Python on the machine that runs it. The result is one self-contained file of about 14 MB. `GOEXPERIMENT=simd` follows the GoMLX documentation: it compiles the backend's AVX2/AVX-512 kernels, which are then used automatically on CPUs that support them.
 
 **Building the .exe from macOS or Linux** (cross-compiling):
 
 ```bash
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o bin/fashion-go.exe ./cmd/fashion-go
+CGO_ENABLED=0 GOEXPERIMENT=simd GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o bin/fashion-go.exe ./cmd/fashion-go
 ```
 
 **Running it.** Either double-click `bin\fashion-go.exe` (a console window opens, the program runs with default settings and waits for Enter before closing), or run it from PowerShell with options as shown next. The program finds `models\` and `data\` whether it is started from the repository folder or from `bin\`.
@@ -244,6 +249,23 @@ Run with -h to see all options.
 
 Non-numbers (`-runs ten`), stray words, missing files, corrupt files, and image/label files that don't belong together all produce a plain explanation instead of a crash.
 
+**Choosing a GoMLX backend.** The program honors GoMLX's standard `GOMLX_BACKEND` environment variable; without it, the pure-Go backend is used. For example:
+
+```powershell
+$env:GOMLX_BACKEND = "go:ops_parallel"   # pure-Go backend, run independent operations in parallel
+.\bin\fashion-go.exe
+Remove-Item Env:GOMLX_BACKEND            # back to the default
+```
+
+The ONNX Runtime backend has to be compiled in (Linux or macOS, with a C compiler):
+
+```bash
+go build -tags onnx -o bin/fashion-go ./cmd/fashion-go
+GOMLX_BACKEND=onnx ./bin/fashion-go          # GoMLX downloads ONNX Runtime on first use
+# or point it at an existing copy, e.g. the one inside the Python onnxruntime package:
+ONNXRUNTIME_SHARED_LIBRARY_PATH=/path/to/libonnxruntime.so GOMLX_BACKEND=onnx ./bin/fashion-go
+```
+
 **Exit codes** (useful in scripts): `0` success, `1` runtime error, `2` invalid input, `3` predictions do not match Python.
 
 **What one run does:**
@@ -273,8 +295,8 @@ go test -v ./internal/engine
 | `internal/idx` | synthetic IDX files: raw and gzip give identical results, label files, wrong file type, truncated file, missing file | 88% |
 | `internal/compare` | identical vs differing predictions, count mismatches, CSV write/read round trip, a malformed CSV line | 88% |
 | `internal/bench` | statistics on known values (mean, median, sample std, rate), warm-up counting, error propagation, latency indexing | 92% |
-| `internal/engine` | **the real model vs Python on 50 images with a partial last batch**, batch size 12 vs 1 giving the same logits, wrong-size input, bad index, missing and corrupt model files | 88% |
-| `cmd/fashion-go` | flag defaults, every validation rule, non-numeric values, stray arguments, `-h`, table ordering and speed ratios | 32% (the rest is the full run, exercised end to end) |
+| `internal/engine` | **the real model vs Python on 50 images with a partial last batch**, batch size 12 vs 1 giving the same logits, wrong-size input, bad index, missing and corrupt model files, `GOMLX_BACKEND` override | 88% |
+| `cmd/fashion-go` | flag defaults, every validation rule, non-numeric values, stray arguments, `-h`, table ordering, speed ratios, backend names | 32% (the rest is the full run, exercised end to end) |
 
 Synthetic data is generated inside the tests, so they need no downloads. The engine tests that use the real model skip themselves, with a message, if the model or Python predictions are missing.
 
@@ -307,6 +329,8 @@ go tool pprof -http=:8080 bin\fashion-go.exe cpu.prof   # interactive view in a 
 ---
 
 ## Results
+
+The tables in this section use the default **pure-Go backend**, the one that builds into the Windows `.exe`; the [next section](#gomlx-backends-tried) compares other GoMLX backends.
 
 Measured on the development machine: **Linux x86-64, 2 CPU cores, 7 GB RAM**, Go 1.27.3, Python 3.13, PyTorch 2.14, ONNX Runtime 1.29. Every engine used batches of 1,000 images and all available cores. Your numbers will differ on your own computer; rerun steps 4 and 5 to regenerate them, and `results/timing_comparison.md` will hold your tables.
 
@@ -347,7 +371,7 @@ The tiny differences come from adding up floating-point numbers in a different o
 | Peak memory of the process | 877 MB (PyTorch + ONNX Runtime loaded) | 337 MB obtained from the OS; 20 MB live heap at the end |
 | What must be installed to run it | Python, PyTorch (~1 GB), NumPy | nothing: one 14 MB `.exe` |
 
-### Why is Go slower here?
+### Why is the pure-Go backend slower?
 
 The CPU profile (`results/go_profile_summary.txt`) shows where the time goes in the Go program:
 
@@ -358,18 +382,43 @@ The CPU profile (`results/go_profile_summary.txt`) shows where the time goes in 
 | ~20% | Go memory allocation and garbage collection triggered inside those operations |
 | <5% | everything else (dense layers, ReLU, our own code) |
 
-GoMLX's pure-Go backend computes convolution and pooling with straightforward loops in plain Go. PyTorch and ONNX Runtime use hand-tuned C++ kernels that process many numbers per CPU instruction (SIMD) and lay data out for the cache. That gap, not Go itself and not the ONNX conversion, explains the result. Changing the batch size (tried 100, 1,000, and 2,500) changed Go's time by only about 6%, which confirms the cost is in the arithmetic rather than in per-call overhead.
+GoMLX's pure-Go backend computes convolution and pooling with straightforward loops in plain Go. PyTorch and ONNX Runtime use hand-tuned C++ kernels that process many numbers per CPU instruction (SIMD) and lay data out for the cache. That gap, not Go itself and not the ONNX conversion, explains the result: the same Go program on GoMLX's ONNX Runtime backend is about 130x faster (next section). Changing the batch size (tried 100, 1,000, and 2,500) changed Go's time by only about 6%, which confirms the cost is in the arithmetic rather than in per-call overhead.
+
+---
+
+## GoMLX backends tried
+
+GoMLX separates *building* a computation graph from *executing* it, and the [GoMLX README](https://github.com/gomlx/gomlx) lists several execution backends and tuning switches. Each one that applied to this project was tried on the same model and test set:
+
+| GoMLX backend / setting | Test set (10,000 images) | One image | Matches Python? | Runs on Windows? | Notes |
+|---|---:|---:|---|---|---|
+| **`go`, pure Go** (default here) | 29,893 ms | 3.69 ms | yes | **yes, single `.exe`** | 30 runs; numbers in [Results](#results) |
+| `go` + `GOEXPERIMENT=simd` | 29,395 ms | 3.72 ms | yes | yes | 2 runs; SIMD covers matrix multiply and activations, not convolution or pooling, which take ~80% of the time |
+| `go:ops_parallel` | 29,878 ms | 3.32 ms | yes | yes | 1 run; this model's layers run one after another, so there is little to overlap |
+| **`onnx`, ONNX Runtime** (`-tags onnx`) | **222.8 ms** | **0.078 ms** | yes | no (see below) | 30 runs; full output in `results/onnx-backend/` |
+| `xla`, OpenXLA | not run | not run | — | no | the GoMLX README lists XLA CPU support for Linux and macOS only; its installer could not download in this sandbox |
+
+**ONNX Runtime backend in detail** (30 runs, same machine and settings as above):
+
+| Engine | Test set mean (ms) | Std (ms) | Images/s | One image mean (ms) | p95 (ms) |
+|---|---:|---:|---:|---:|---:|
+| Python + ONNX Runtime | 179.6 | 14.2 | 55,684 | 0.050 | 0.070 |
+| **Go + GoMLX (ONNX Runtime backend)** | **222.8** | 30.5 | **44,889** | **0.078** | 0.145 |
+| Python + PyTorch | 1,506.0 | 79.9 | 6,640 | 0.183 | 0.260 |
+| Go + GoMLX (pure-Go backend) | 29,893.0 | 367.8 | 335 | 3.688 | 5.144 |
+
+Predictions on the ONNX Runtime backend also matched Python on all 10,000 images (largest logit difference 0.0000067). The Go program's own heap stayed at about 21 MB; ONNX Runtime's native memory is outside Go's accounting, so it is not comparable with the pure-Go memory figure.
+
+**Why the ONNX Runtime backend is not the Windows deliverable.** It is compiled with cgo (a C compiler is required), it loads the ONNX Runtime shared library at run time, and in `compute-onnx` v0.1.13 the library loader is implemented only for Linux and macOS. The GoMLX README's backend list also mentions Windows for this backend, so Windows support may arrive in a later release; it did not build for Windows with the versions used here.
 
 ---
 
 ## Recommendation for management
 
-1. **The development workflow works.** Data scientists can keep building models in Python. The exported ONNX file carries the whole model, and Go reproduces Python's answers exactly. That part of the proposal is proven.
-2. **Do not use the pure-Go GoMLX backend for the high-traffic service.** At about 270 single-image requests per second per machine (on 2 cores), serving thousands of users with fast responses would need many more servers than the Python alternatives.
-3. **To keep Go in production and be fast, use a native engine behind Go.** Two options to evaluate next:
-   - GoMLX's **XLA backend** (Google's optimizing compiler, also used by TensorFlow and JAX). This needs only a small change in `internal/engine` (a different backend import and name) but downloads native libraries at first run; it could not be tested in this project's sandbox.
-   - **ONNX Runtime called from Go** (for example `github.com/yalue/onnxruntime_go`). The ONNX Runtime row above shows the speed that becomes available.
-4. **Where pure-Go GoMLX is a good fit today:** low-volume or offline jobs, edge devices, and tools that must ship as a single file with no installs. At under 4 ms per image, a single user would not notice the difference.
+1. **The development workflow works.** Data scientists can keep building models in Python. The exported ONNX file carries the whole model, and Go reproduces Python's answers exactly on every backend tried.
+2. **For a high-traffic Go service, run GoMLX on the ONNX Runtime backend, on Linux servers.** It answered a single-image request in about 0.08 ms and processed about 45,000 images per second on 2 cores, 7x the throughput of PyTorch and close to ONNX Runtime in Python, while the service stays in Go. This is the setup to pilot.
+3. **Do not use the pure-Go backend for the high-traffic service.** At about 270 single-image requests per second per 2-core machine, serving thousands of users would need far more servers.
+4. **Where the pure-Go backend fits today:** Windows desktop tools, edge devices, and offline jobs that must ship as one file with nothing to install. At under 4 ms per image, a single user would not notice the difference. GoMLX's README notes the pure-Go backend is being actively optimized, so this gap may shrink.
 
 ---
 
@@ -378,6 +427,7 @@ GoMLX's pure-Go backend computes convolution and pooling with straightforward lo
 These are worth knowing for anyone repeating the approach:
 
 - **An ONNX feature gap.** PyTorch always writes a `dilations=[1,1]` attribute on MaxPool layers. `onnx-gomlx` refuses any MaxPool that carries that attribute, even though `[1,1]` is the default and means "no dilation". `train_and_export.py` removes the attribute only when it has the default value, which leaves the model's meaning unchanged; ONNX Runtime and a unit test confirm the cleaned file still matches PyTorch. ONNX is a common format, but each runtime supports a different subset of it, so test every new layer type early.
+- **SIMD must be switched on at build time.** GoMLX's pure-Go backend only includes its AVX2/AVX-512 code when built with `GOEXPERIMENT=simd`; `build.ps1` sets it. For this model it changed little, because convolution and pooling have no SIMD kernels yet.
 - **Go version.** The current `onnx-gomlx` (v0.5.14) requires Go 1.27. Older Go versions fail at `go build` with a "requires go >= 1.27" message.
 - **Fair timing.** PyTorch is slower than ONNX Runtime on the *same* model here because ONNX Runtime optimizes the graph ahead of time. Reporting both shows that "Python" speed depends heavily on which Python engine is used.
 
