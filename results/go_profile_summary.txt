@@ -1,0 +1,40 @@
+# CPU profile: one full pass of 10,000 images + 20 single-image calls (go tool pprof -top)
+Time: 2026-10-20 21:33:50 CDT
+Duration: 64.65s, Total samples = 69.35s (107.27%)
+Showing nodes accounting for 52.16s, 75.21% of 69.35s total
+Dropped 365 nodes (cum <= 0.35s)
+Showing top 12 nodes out of 98
+      flat  flat%   sum%        cum   cum%
+    28.45s 41.02% 41.02%     28.55s 41.17%  github.com/gomlx/compute/internal/gobackend/ops.execConvNoDilationGeneric[go.shape.float32].func1
+     5.98s  8.62% 49.65%      8.33s 12.01%  github.com/gomlx/compute/internal/gobackend/ops.execReduceWindow.func1-range1
+     3.65s  5.26% 54.91%      3.65s  5.26%  runtime.memclrNoHeapPointers
+     2.26s  3.26% 58.17%      2.28s  3.29%  github.com/gomlx/compute/internal/gobackend/ops.reduceWindowMaxBuildUpdateFn[go.shape.float32].func1
+     1.94s  2.80% 60.97%      1.94s  2.80%  github.com/gomlx/compute/internal/gobackend/activations.ReluNoSIMD[go.shape.float32]
+     1.83s  2.64% 63.60%     27.17s 39.18%  github.com/gomlx/compute/internal/gobackend/ops.execReduceWindow.func1
+     1.62s  2.34% 65.94%      1.63s  2.35%  runtime.(*mspan).moveInlineMarks
+     1.58s  2.28% 68.22%     10.21s 14.72%  github.com/gomlx/compute/shapes.Shape.IterOn.func1
+     1.52s  2.19% 70.41%      1.52s  2.19%  github.com/gomlx/compute/internal/gobackend/dot/matmul.largeNoSIMDPanel[go.shape.float32,go.shape.float32]
+     1.24s  1.79% 72.20%      5.78s  8.33%  github.com/gomlx/compute/shapes.Shape.IterOn
+     1.05s  1.51% 73.71%      1.05s  1.51%  internal/runtime/atomic.(*Uint64).Add (inline)
+
+# Cumulative view: time by GoMLX operation
+     0.01s 0.014% 0.014%     28.56s 41.18%  github.com/gomlx/compute/internal/gobackend/ops.execConvNoDilationGeneric[go.shape.float32].func2
+    28.45s 41.02% 41.04%     28.55s 41.17%  github.com/gomlx/compute/internal/gobackend/ops.execConvNoDilationGeneric[go.shape.float32].func1
+     1.83s  2.64% 43.68%     27.17s 39.18%  github.com/gomlx/compute/internal/gobackend/ops.execReduceWindow.func1
+         0     0% 43.68%     27.17s 39.18%  github.com/gomlx/compute/internal/gobackend/ops.execReduceWindow.func2
+     0.59s  0.85% 44.53%     14.20s 20.48%  runtime.mallocgc
+     0.75s  1.08% 46.04%     11.12s 16.03%  runtime.mallocgcSmallScanNoHeader
+     5.98s  8.62% 56.94%      8.33s 12.01%  github.com/gomlx/compute/internal/gobackend/ops.execReduceWindow.func1-range1
+
+# Heap profile (live memory after the run)
+Time: 2026-10-20 21:34:54 CDT
+Showing nodes accounting for 8791.12kB, 94.50% of 9303.14kB total
+Showing top 8 nodes out of 99
+      flat  flat%   sum%        cum   cum%
+ 3552.82kB 38.19% 38.19%  3552.82kB 38.19%  github.com/gomlx/compute/internal/gobackend.(*Backend).GetBuffer
+ 1184.27kB 12.73% 50.92%  1184.27kB 12.73%  runtime/pprof.StartCPUProfile
+ 1000.34kB 10.75% 61.67%  1000.34kB 10.75%  github.com/gomlx/compute/dtypes.MakeAnySlice
+ 1000.34kB 10.75% 72.42%  1000.34kB 10.75%  google.golang.org/protobuf/internal/impl.consumeBytesNoZero
+  516.64kB  5.55% 77.98%   516.64kB  5.55%  google.golang.org/protobuf/internal/strs.(*Builder).grow
+  512.38kB  5.51% 83.49%   512.38kB  5.51%  github.com/gomlx/compute/internal/gobackend.newFunctionExecutable
+  512.23kB  5.51% 88.99%   512.23kB  5.51%  runtime.mallocgc

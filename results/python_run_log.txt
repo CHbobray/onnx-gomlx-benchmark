@@ -1,0 +1,7 @@
+test set: 10,000 images, batch size 1000, 30 timed runs after 3 warm-ups
+PyTorch accuracy 0.9034; predictions written to results/python_predictions.csv
+ONNX Runtime vs PyTorch: max |logit diff| = 6.68e-06, class agreement = 1.0000
+pytorch      full test set: mean   1506.0 ms (std 79.9, 6,640 images/s); single image: mean 0.183 ms, p95 0.260 ms
+onnxruntime  full test set: mean    179.6 ms (std 14.2, 55,684 images/s); single image: mean 0.050 ms, p95 0.070 ms
+peak resident memory: 877 MB
+timing written to results/python_timing.json
