@@ -99,6 +99,9 @@ func parseRecord(record []string, numClasses int) (Reference, error) {
 
 // Compare measures agreement between Go logits/classes and the Python references.
 func Compare(references []Reference, goLogits []float32, goClasses []int) (Report, error) {
+	if len(goClasses) == 0 {
+		return Report{}, fmt.Errorf("no Go predictions to compare")
+	}
 	if len(references) != len(goClasses) {
 		return Report{}, fmt.Errorf("python has %d predictions, Go has %d", len(references), len(goClasses))
 	}
@@ -136,6 +139,9 @@ func Compare(references []Reference, goLogits []float32, goClasses []int) (Repor
 
 // WritePredictionsCSV writes Go predictions in the same layout as the Python file.
 func WritePredictionsCSV(path string, labels []uint8, logits []float32, classes []int) error {
+	if len(classes) == 0 || len(logits)%len(classes) != 0 {
+		return fmt.Errorf("got %d logits for %d images: cannot split into rows", len(logits), len(classes))
+	}
 	file, err := os.Create(path)
 	if err != nil {
 		return err

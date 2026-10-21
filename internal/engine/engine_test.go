@@ -173,3 +173,32 @@ func TestBackendConfigHonorsEnvironment(t *testing.T) {
 		t.Errorf("override: got %q", got)
 	}
 }
+
+// BenchmarkPredictOne measures a single-image request (the latency case).
+func BenchmarkPredictOne(b *testing.B) {
+	images, err := idx.ReadImagesFile(testImagesPath)
+	if err != nil {
+		b.Skip(err)
+	}
+	classifier, err := Load(modelPath)
+	if err != nil {
+		b.Skip(err)
+	}
+	defer classifier.Close()
+	for b.Loop() {
+		if _, err := classifier.PredictOne(images, 0); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkArgMax measures picking the class for 10,000 images.
+func BenchmarkArgMax(b *testing.B) {
+	logits := make([]float32, 10_000*10)
+	for i := range logits {
+		logits[i] = float32(i % 7)
+	}
+	for b.Loop() {
+		ArgMax(logits, 10)
+	}
+}

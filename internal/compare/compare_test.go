@@ -79,3 +79,55 @@ func TestReadReferenceRejectsBadNumber(t *testing.T) {
 		t.Errorf("expected a line-3 parse error, got %v", err)
 	}
 }
+
+func TestRejectsEmptyPredictions(t *testing.T) {
+	if _, err := Compare(nil, nil, nil); err == nil {
+		t.Error("Compare should reject empty input")
+	}
+	path := filepath.Join(t.TempDir(), "empty.csv")
+	if err := WritePredictionsCSV(path, nil, nil, nil); err == nil {
+		t.Error("WritePredictionsCSV should reject empty input")
+	}
+}
+
+// syntheticPredictions builds n images' worth of predictions with 10 classes.
+func syntheticPredictions(n int) ([]Reference, []float32, []int) {
+	const numClasses = 10
+	references := make([]Reference, n)
+	logits := make([]float32, n*numClasses)
+	classes := make([]int, n)
+	for i := range n {
+		class := i % numClasses
+		row := make([]float32, numClasses)
+		row[class] = 1
+		copy(logits[i*numClasses:], row)
+		references[i] = Reference{Label: class, Predicted: class, Logits: row}
+		classes[i] = class
+	}
+	return references, logits, classes
+}
+
+// BenchmarkCompare measures comparing 10,000 predictions, the size of the test set.
+func BenchmarkCompare(b *testing.B) {
+	references, logits, classes := syntheticPredictions(10_000)
+	for b.Loop() {
+		if _, err := Compare(references, logits, classes); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkReadReferenceCSV measures parsing a 10,000-row predictions file.
+func BenchmarkReadReferenceCSV(b *testing.B) {
+	references, logits, classes := syntheticPredictions(10_000)
+	labels := make([]uint8, len(references))
+	path := filepath.Join(b.TempDir(), "preds.csv")
+	if err := WritePredictionsCSV(path, labels, logits, classes); err != nil {
+		b.Fatal(err)
+	}
+	for b.Loop() {
+		if _, err := ReadReferenceCSV(path); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

@@ -1,7 +1,8 @@
 // Package engine loads an ONNX image classifier into GoMLX and runs inference.
 //
-// It uses GoMLX's pure-Go compute backend, so the resulting program needs no
-// C libraries, Python, or ONNX Runtime and cross-compiles to a single Windows .exe.
+// By default it uses GoMLX's pure-Go compute backend, so the resulting program
+// needs no C libraries, Python, or ONNX Runtime and cross-compiles to a single
+// Windows .exe. The GOMLX_BACKEND environment variable selects another backend.
 package engine
 
 import (

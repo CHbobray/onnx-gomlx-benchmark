@@ -1,7 +1,6 @@
 # AI-assistant dialog
 
-This folder holds the record of the conversation with the LLM-based assistant
-(Claude, by Anthropic) used to build this project, as the assignment requires.
+The assignment asks for the dialog with the LLM-based tools used to build this project.
 
-- `ai-assistant-dialog.pdf` — the full conversation, exported from the chat
-  (in the browser: open the conversation, then Print → Save as PDF).
+- [`ai-assistant-dialog.md`](ai-assistant-dialog.md) — every message exchanged with Claude (Anthropic) in this project's chat, in order, as plain text.
+- `ai-assistant-dialog.pdf` — the same conversation exported from the chat app (open the conversation in a browser, then Print → Save as PDF), added by the author.

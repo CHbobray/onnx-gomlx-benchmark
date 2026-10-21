@@ -9,7 +9,9 @@ bytes to float32, so Python and Go cannot drift apart on preprocessing.
 from __future__ import annotations
 
 import gzip
+import logging
 import struct
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -92,3 +94,20 @@ class FashionCNN(nn.Module):
     def forward(self, raw_pixels: torch.Tensor) -> torch.Tensor:
         normalized = (raw_pixels - PIXEL_MEAN) / PIXEL_STD
         return self.classifier(self.features(normalized))
+
+
+def setup_logging(logger: logging.Logger, log_name: str) -> None:
+    """Send logger's messages to the console and to results/<log_name> (overwritten each run).
+
+    Called from main(), not at import time, so importing a script in tests writes no files.
+    """
+    RESULTS_DIR.mkdir(exist_ok=True)
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(logging.Formatter("%(message)s"))
+    log_file = logging.FileHandler(RESULTS_DIR / log_name, mode="w", encoding="utf-8")
+    log_file.setFormatter(logging.Formatter("%(asctime)s  %(message)s"))
+    logger.addHandler(console)
+    logger.addHandler(log_file)
+    logger.info("command: %s", " ".join(sys.argv))

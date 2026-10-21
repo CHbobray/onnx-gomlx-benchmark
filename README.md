@@ -105,12 +105,13 @@ Trained for 5 epochs with Adam, it reaches **90.34% test accuracy**. Normalizati
 │   ├── python_timing.json       Python timing statistics
 │   ├── go_timing.json           Go timing, memory, and agreement statistics
 │   ├── timing_comparison.md     side-by-side tables (written by the Go app)
-│   ├── python_run_log.txt       console output of the Python run
-│   ├── go_run_log.txt           console output of the Go run
-│   ├── go_profile_summary.txt   CPU and heap profile of the Go app
+│   ├── python_run_log.txt       log written by predict_and_time.py
+│   ├── go_run_log.txt           log written by fashion-go (start time, command, output, outcome)
+│   ├── go_profile_summary.txt   CPU and heap profile of the whole Go program
+│   ├── go_component_benchmarks.txt  time and memory of each Go component (go test -bench)
 │   └── onnx-backend/            the same Go run on GoMLX's ONNX Runtime backend
 │
-└── docs/                      AI-assistant dialog (see below)
+└── docs/                      AI-assistant dialog: ai-assistant-dialog.md (plain text)
 ```
 
 ---
@@ -278,6 +279,18 @@ ONNXRUNTIME_SHARED_LIBRARY_PATH=/path/to/libonnxruntime.so GOMLX_BACKEND=onnx ./
 6. Latency benchmark: `-latency` separate single-image predictions, each timed on its own.
 7. Samples Go memory use, then writes `go_timing.json` and `timing_comparison.md` and prints the comparison table.
 
+**Progress and logs.** When the first pass shows the benchmark will take more than a minute (the pure-Go backend needs about 30 s per pass, so the default 30 runs take about 17 minutes), the program says how long to expect and how to shorten it, then prints one line per run with the time remaining:
+
+```
+Note: the benchmark will take about 17m0s. For a quicker run use fewer runs, e.g. -runs 5 -warmup 1
+
+Benchmarking: 3 warm-up + 30 timed runs of 10000 images, batch size 1000
+  run 1/30: 29.6 s (about 14m18s left)
+  run 2/30: 29.4 s (about 13m43s left)
+```
+
+Everything shown on screen is also saved to `results\go_run_log.txt`, together with the start time, the exact command, and whether the run finished or why it failed. The Python scripts do the same in `results\python_run_log.txt` and `results\training_log.txt`, with a timestamp on every line. (The logs committed in `results/` come from the benchmark runs reported below, which were captured by redirecting console output before this logging was added; any new run writes its own logs in the format described here.)
+
 ---
 
 ## Testing, benchmarks, and profiling
@@ -293,10 +306,10 @@ go test -v ./internal/engine
 | Package | What the tests cover | Coverage |
 |---|---|---|
 | `internal/idx` | synthetic IDX files: raw and gzip give identical results, label files, wrong file type, truncated file, missing file | 88% |
-| `internal/compare` | identical vs differing predictions, count mismatches, CSV write/read round trip, a malformed CSV line | 88% |
-| `internal/bench` | statistics on known values (mean, median, sample std, rate), warm-up counting, error propagation, latency indexing | 92% |
+| `internal/compare` | identical vs differing predictions, count mismatches, empty input, CSV write/read round trip, a malformed CSV line | 89% |
+| `internal/bench` | statistics on known values (mean, median, sample std, rate), warm-up counting, progress reporting, error propagation, latency indexing | 92% |
 | `internal/engine` | **the real model vs Python on 50 images with a partial last batch**, batch size 12 vs 1 giving the same logits, wrong-size input, bad index, missing and corrupt model files, `GOMLX_BACKEND` override | 88% |
-| `cmd/fashion-go` | flag defaults, every validation rule, non-numeric values, stray arguments, `-h`, table ordering, speed ratios, backend names | 32% (the rest is the full run, exercised end to end) |
+| `cmd/fashion-go` | **the whole program end to end** on a 40-image slice of the real data (all output files and the run log), a deliberate mismatch giving exit code 3 and a logged failure, flag defaults, every validation rule, non-numeric values, stray arguments, `-h`, table ordering, speed ratios, backend names | 72% |
 
 Synthetic data is generated inside the tests, so they need no downloads. The engine tests that use the real model skip themselves, with a message, if the model or Python predictions are missing.
 
@@ -325,6 +338,27 @@ go tool pprof -http=:8080 bin\fashion-go.exe cpu.prof   # interactive view in a 
 ```
 
 `results/go_profile_summary.txt` contains the profile behind the analysis below.
+
+**Memory and processing requirements of each component.** Go's benchmark tool measures time, bytes allocated, and allocations per call for each package:
+
+```powershell
+go test -run XXX -bench . -benchmem ./internal/...
+```
+
+Results on the development machine (`results/go_component_benchmarks.txt`):
+
+| Component | Work per call | Time | Memory allocated | Allocations |
+|---|---|---:|---:|---:|
+| `idx.ReadImagesFile` | read + un-gzip 10,000 test images | 51 ms | 8.2 MB | 1,388 |
+| `compare.ReadReferenceCSV` | parse a 10,000-row predictions CSV | 8.4 ms | 5.4 MB | 30,041 |
+| `compare.Compare` | compare 10,000 predictions | 0.57 ms | 0 B | 0 |
+| `engine.ArgMax` | pick the class for 10,000 images | 0.16 ms | 80 KB | 1 |
+| `engine.PredictImages` | classify one 100-image batch (pure-Go backend) | 373 ms | 235 MB | 1.4 million |
+| `engine.PredictOne` | classify one image (pure-Go backend) | 3.6 ms | 2.1 MB | 14,328 |
+
+Inference dominates both time and memory: per image, the pure-Go backend allocates about 2 MB of short-lived buffers. That churn is why garbage collection takes about 20% of CPU time in the whole-program profile. Every other component is negligible next to it.
+
+For the whole program, `go_timing.json` records Go heap and operating-system memory after the run (337 MB from the OS, 20 MB live heap), and `python_timing.json` records the Python process's peak memory (877 MB).
 
 ---
 
@@ -437,6 +471,7 @@ These are worth knowing for anyone repeating the approach:
 
 How the grading criteria are addressed:
 
+- **Short functions, one step each.** `run()` in `main.go` reads as the list of steps (load data, load model, check predictions, benchmark, write results); each step is its own function.
 - **Small, single-purpose Go packages** (`idx`, `engine`, `compare`, `bench`) that other projects can reuse: the `idx` reader works for MNIST, and `engine` loads any ONNX image classifier with one input and one `[batch, classes]` output.
 - **Errors are values.** Library code returns wrapped errors with context (`data\x.gz: reading image header: ...`); only `main` decides how to report them and which exit code to use.
 - **Validation before work.** All user input is checked up front, and every problem is listed together.
@@ -448,7 +483,7 @@ How the grading criteria are addressed:
 
 ## AI-assistant dialog
 
-The assignment asks for the dialog with the LLM-based tools used. This project was built with help from **Claude** (Anthropic). The conversation is saved in [`docs/`](docs/) as a PDF.
+The assignment asks for the dialog with the LLM-based tools used. This project was built with help from **Claude** (Anthropic). Every message of that conversation is in [`docs/ai-assistant-dialog.md`](docs/ai-assistant-dialog.md) as plain text, and [`docs/`](docs/) also holds the PDF exported from the chat app.
 
 ---
 

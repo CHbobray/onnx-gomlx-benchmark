@@ -38,7 +38,9 @@ func gzipBytes(t *testing.T, raw []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	writer := gzip.NewWriter(&buf)
-	writer.Write(raw)
+	if _, err := writer.Write(raw); err != nil {
+		t.Fatal(err)
+	}
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -98,5 +100,19 @@ func TestRejectsTruncatedData(t *testing.T) {
 func TestMissingFile(t *testing.T) {
 	if _, err := ReadLabelsFile(filepath.Join(t.TempDir(), "nope")); err == nil {
 		t.Error("expected an error for a missing file")
+	}
+}
+
+// BenchmarkReadImagesFile measures reading and un-gzipping the real 10,000-image
+// test file (skipped if the data folder is missing).
+func BenchmarkReadImagesFile(b *testing.B) {
+	path := filepath.Join("..", "..", "data", "t10k-images-idx3-ubyte.gz")
+	if _, err := os.Stat(path); err != nil {
+		b.Skip(err)
+	}
+	for b.Loop() {
+		if _, err := ReadImagesFile(path); err != nil {
+			b.Fatal(err)
+		}
 	}
 }

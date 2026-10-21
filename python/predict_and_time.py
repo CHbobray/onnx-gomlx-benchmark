@@ -15,6 +15,7 @@ Usage (from the repository root):
 from __future__ import annotations
 
 import argparse
+import logging
 import csv
 import json
 import platform
@@ -27,6 +28,8 @@ import onnxruntime as ort
 import torch
 
 import fashion_common as fc
+
+log = logging.getLogger("predict_and_time")
 
 PREDICTIONS_CSV = fc.RESULTS_DIR / "python_predictions.csv"
 TIMING_JSON = fc.RESULTS_DIR / "python_timing.json"
@@ -146,9 +149,10 @@ def peak_memory_mb() -> float:
 
 def main() -> None:
     args = parse_args()
+    fc.setup_logging(log, "python_run_log.txt")
     labels = fc.read_idx_labels(fc.TEST_LABELS)
     pixels = fc.images_to_tensor(fc.read_idx_images(fc.TEST_IMAGES)).numpy()
-    print(f"test set: {len(labels):,} images, batch size {args.batch_size}, "
+    log.info(f"test set: {len(labels):,} images, batch size {args.batch_size}, "
           f"{args.runs} timed runs after {args.warmup} warm-ups")
 
     engines = {"pytorch": make_pytorch_predictor(), "onnxruntime": make_onnxruntime_predictor()}
@@ -156,11 +160,11 @@ def main() -> None:
     logits = predict_all(engines["pytorch"], pixels, args.batch_size)
     accuracy = float((logits.argmax(axis=1) == labels).mean())
     write_predictions(labels, logits)
-    print(f"PyTorch accuracy {accuracy:.4f}; predictions written to "
+    log.info(f"PyTorch accuracy {accuracy:.4f}; predictions written to "
           f"{PREDICTIONS_CSV.relative_to(fc.REPO_ROOT)}")
 
     ort_logits = predict_all(engines["onnxruntime"], pixels, args.batch_size)
-    print(f"ONNX Runtime vs PyTorch: max |logit diff| = {np.abs(ort_logits - logits).max():.2e}, "
+    log.info(f"ONNX Runtime vs PyTorch: max |logit diff| = {np.abs(ort_logits - logits).max():.2e}, "
           f"class agreement = {(ort_logits.argmax(1) == logits.argmax(1)).mean():.4f}")
 
     timing = {
@@ -177,14 +181,14 @@ def main() -> None:
         throughput = time_engine(predict, pixels, args)
         latency = time_latency(predict, pixels, args.latency)
         timing["engines"][name] = {"throughput": throughput, "latency": latency}
-        print(f"{name:12s} full test set: mean {throughput['mean_ms']:8.1f} ms "
+        log.info(f"{name:12s} full test set: mean {throughput['mean_ms']:8.1f} ms "
               f"(std {throughput['std_ms']:.1f}, {throughput['images_per_second']:,.0f} images/s); "
               f"single image: mean {latency['mean_ms']:.3f} ms, p95 {latency['p95_ms']:.3f} ms")
     timing["peak_memory_mb"] = peak_memory_mb()
-    print(f"peak resident memory: {timing['peak_memory_mb']:.0f} MB")
+    log.info(f"peak resident memory: {timing['peak_memory_mb']:.0f} MB")
 
     TIMING_JSON.write_text(json.dumps(timing, indent=2))
-    print(f"timing written to {TIMING_JSON.relative_to(fc.REPO_ROOT)}")
+    log.info(f"timing written to {TIMING_JSON.relative_to(fc.REPO_ROOT)}")
 
 
 if __name__ == "__main__":

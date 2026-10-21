@@ -1,0 +1,20 @@
+# go test -run XXX -bench . -benchmem ./internal/...   (GOEXPERIMENT=simd, linux amd64, 2 cores)
+ok  	github.com/CHbobray/onnx-gomlx-benchmark/internal/bench	0.006s
+goos: linux
+goarch: amd64
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkCompare-2            	    1863	    574450 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadReferenceCSV-2   	     144	   8438213 ns/op	 5368546 B/op	   30041 allocs/op
+ok  	github.com/CHbobray/onnx-gomlx-benchmark/internal/compare	2.309s
+goos: linux
+goarch: amd64
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkPredictBatch-2   	       3	 372564847 ns/op	234843776 B/op	 1411768 allocs/op
+BenchmarkPredictOne-2     	     296	   3629389 ns/op	 2106944 B/op	   14328 allocs/op
+BenchmarkArgMax-2         	    7708	    164501 ns/op	   81920 B/op	       1 allocs/op
+ok  	github.com/CHbobray/onnx-gomlx-benchmark/internal/engine	3.584s
+goos: linux
+goarch: amd64
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkReadImagesFile-2   	      22	  51404200 ns/op	 8157456 B/op	    1388 allocs/op
+ok  	github.com/CHbobray/onnx-gomlx-benchmark/internal/idx	1.136s

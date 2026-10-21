@@ -26,9 +26,14 @@ type Stats struct {
 	ImagesPerSecond float64 `json:"images_per_second"`
 }
 
+// Progress, if not nil, is called after each timed run with the 1-based run
+// number, the total number of runs, and how long that run took. It is called
+// outside the timed region, so reporting does not affect the measurements.
+type Progress func(run, runs int, took time.Duration)
+
 // MonteCarlo calls workload warmup times untimed, then runs times timed,
 // and returns statistics over the timed runs. It stops at the first error.
-func MonteCarlo(runs, warmup, imagesPerRun int, workload func() error) (Stats, error) {
+func MonteCarlo(runs, warmup, imagesPerRun int, workload func() error, progress Progress) (Stats, error) {
 	if runs < 1 {
 		return Stats{}, fmt.Errorf("runs must be at least 1, got %d", runs)
 	}
@@ -44,6 +49,9 @@ func MonteCarlo(runs, warmup, imagesPerRun int, workload func() error) (Stats, e
 			return Stats{}, fmt.Errorf("run %d: %w", run+1, err)
 		}
 		durations[run] = time.Since(started)
+		if progress != nil {
+			progress(run+1, runs, durations[run])
+		}
 	}
 	return Summarize(durations, imagesPerRun), nil
 }

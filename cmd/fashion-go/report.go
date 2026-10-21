@@ -50,9 +50,12 @@ type pythonTiming struct {
 	Engines   map[string]engineTiming `json:"engines"`
 }
 
+// engineLabel pairs an engine's key in the timing data with its display name.
+type engineLabel struct{ key, name string }
+
 // Display names for the engines, in the order they appear in tables.
 // The Go entry's name is filled in from the backend actually used.
-var engineOrder = []struct{ key, name string }{
+var engineOrder = []engineLabel{
 	{"gomlx", ""},
 	{"pytorch", "Python + PyTorch"},
 	{"onnxruntime", "Python + ONNX Runtime"},
@@ -160,14 +163,14 @@ func writeTable(out *strings.Builder, engines map[string]engineTiming,
 }
 
 // orderedEngines lists the engines present, fastest first.
-func orderedEngines(engines map[string]engineTiming, pick func(engineTiming) bench.Stats) []struct{ key, name string } {
-	var present []struct{ key, name string }
+func orderedEngines(engines map[string]engineTiming, pick func(engineTiming) bench.Stats) []engineLabel {
+	var present []engineLabel
 	for _, engine := range engineOrder {
 		if _, ok := engines[engine.key]; ok {
 			present = append(present, engine)
 		}
 	}
-	slices.SortStableFunc(present, func(a, b struct{ key, name string }) int {
+	slices.SortStableFunc(present, func(a, b engineLabel) int {
 		return cmpFloat(pick(engines[a.key]).MeanMs, pick(engines[b.key]).MeanMs)
 	})
 	return present

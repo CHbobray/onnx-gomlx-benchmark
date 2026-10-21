@@ -31,25 +31,30 @@ func TestSummarizeKnownValues(t *testing.T) {
 
 func TestMonteCarloCountsRuns(t *testing.T) {
 	calls := 0
-	stats, err := MonteCarlo(5, 2, 10, func() error { calls++; return nil })
+	var reported []int
+	stats, err := MonteCarlo(5, 2, 10, func() error { calls++; return nil },
+		func(run, runs int, _ time.Duration) { reported = append(reported, run) })
 	if err != nil {
 		t.Fatal(err)
 	}
 	if calls != 7 || stats.Runs != 5 {
 		t.Errorf("got %d calls and %d runs, want 7 and 5", calls, stats.Runs)
 	}
+	if len(reported) != 5 || reported[4] != 5 {
+		t.Errorf("progress should report timed runs 1-5 only, got %v", reported)
+	}
 }
 
 func TestMonteCarloStopsOnError(t *testing.T) {
 	failure := errors.New("boom")
-	_, err := MonteCarlo(3, 0, 1, func() error { return failure })
+	_, err := MonteCarlo(3, 0, 1, func() error { return failure }, nil)
 	if !errors.Is(err, failure) {
 		t.Errorf("expected wrapped workload error, got %v", err)
 	}
 }
 
 func TestMonteCarloRejectsZeroRuns(t *testing.T) {
-	if _, err := MonteCarlo(0, 0, 1, func() error { return nil }); err == nil {
+	if _, err := MonteCarlo(0, 0, 1, func() error { return nil }, nil); err == nil {
 		t.Error("expected an error for zero runs")
 	}
 }

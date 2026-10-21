@@ -7,6 +7,7 @@ Usage (from the repository root):
 from __future__ import annotations
 
 import argparse
+import logging
 import time
 
 import numpy as np
@@ -16,6 +17,8 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 import fashion_common as fc
+
+log = logging.getLogger("train_and_export")
 
 ONNX_OPSET = 18
 
@@ -47,7 +50,7 @@ def train(model: nn.Module, loader: DataLoader, epochs: int) -> None:
             optimizer.step()
             total_loss += loss.item() * len(labels)
         mean_loss = total_loss / len(loader.dataset)
-        print(f"epoch {epoch}/{epochs}  loss={mean_loss:.4f}  ({time.perf_counter() - started:.1f}s)")
+        log.info(f"epoch {epoch}/{epochs}  loss={mean_loss:.4f}  ({time.perf_counter() - started:.1f}s)")
 
 
 def test_accuracy(model: nn.Module, images: torch.Tensor, labels: np.ndarray) -> float:
@@ -75,9 +78,9 @@ def export_onnx(model: nn.Module) -> None:
     removed = strip_default_maxpool_dilations(exported)
     onnx.checker.check_model(exported)
     onnx.save(exported, str(fc.ONNX_MODEL))
-    print(f"removed default dilations=[1, 1] from {removed} MaxPool node(s) for GoMLX compatibility")
+    log.info(f"removed default dilations=[1, 1] from {removed} MaxPool node(s) for GoMLX compatibility")
     ops = sorted({node.op_type for node in exported.graph.node})
-    print(f"exported {fc.ONNX_MODEL.name} (opset {ONNX_OPSET}); ops used: {', '.join(ops)}")
+    log.info(f"exported {fc.ONNX_MODEL.name} (opset {ONNX_OPSET}); ops used: {', '.join(ops)}")
 
 
 def strip_default_maxpool_dilations(model_proto: onnx.ModelProto) -> int:
@@ -100,6 +103,7 @@ def strip_default_maxpool_dilations(model_proto: onnx.ModelProto) -> int:
 
 def main() -> None:
     args = parse_args()
+    fc.setup_logging(log, "training_log.txt")
     torch.manual_seed(args.seed)
     fc.MODELS_DIR.mkdir(exist_ok=True)
 
@@ -109,16 +113,16 @@ def main() -> None:
                         batch_size=args.batch_size, shuffle=True)
 
     model = fc.FashionCNN()
-    print(f"training FashionCNN ({sum(p.numel() for p in model.parameters()):,} parameters) "
+    log.info(f"training FashionCNN ({sum(p.numel() for p in model.parameters()):,} parameters) "
           f"on {len(train_labels):,} images")
     train(model, loader, args.epochs)
 
     test_images = fc.images_to_tensor(fc.read_idx_images(fc.TEST_IMAGES))
     test_labels = fc.read_idx_labels(fc.TEST_LABELS)
-    print(f"test accuracy: {test_accuracy(model, test_images, test_labels):.4f}")
+    log.info(f"test accuracy: {test_accuracy(model, test_images, test_labels):.4f}")
 
     torch.save(model.state_dict(), fc.PYTORCH_WEIGHTS)
-    print(f"saved weights to {fc.PYTORCH_WEIGHTS.relative_to(fc.REPO_ROOT)}")
+    log.info(f"saved weights to {fc.PYTORCH_WEIGHTS.relative_to(fc.REPO_ROOT)}")
     export_onnx(model)
 
 
