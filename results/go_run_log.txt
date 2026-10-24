@@ -1,35 +1,71 @@
-Loaded 10000 test images (28x28) from data/t10k-images-idx3-ubyte.gz
-Loaded ONNX model models/fashion_cnn.onnx into GoMLX in 2 ms
-First pass (includes graph compilation): 30255 ms, accuracy 0.9034
+fashion-go run started 2026-10-24T14:18:43-05:00
+command: ["C:\\Users\\BobbyHendricks\\onnx-gomlx-benchmark\\bin\\fashion-go.exe" "-runs" "30" "-latency" "500"]
+
+Loaded 10000 test images (28x28) from data\t10k-images-idx3-ubyte.gz
+Loaded ONNX model models\fashion_cnn.onnx into GoMLX (backend "go") in 2 ms
+First pass (includes graph compilation): 14833 ms, accuracy 0.9034
 
 Go vs Python predictions on 10000 images
   predicted-class agreement : 1.0000 (0 differ)
-  max |logit difference|    : 7.63e-06 (tolerance 1e-03)
-  mean |logit difference|   : 7.64e-07
+  max |logit difference|    : 9.54e-06 (tolerance 1e-03)
+  mean |logit difference|   : 7.35e-07
   accuracy  Go 0.9034   Python 0.9034
   RESULT: MATCH - Go reproduces the Python model's predictions
 
-Benchmarking: 3 warm-up + 30 timed runs of 10000 images, batch size 1000...
+Note: the benchmark will take about 8m0s. For a quicker run use fewer runs, e.g. -runs 5 -warmup 1
+
+Benchmarking: 3 warm-up + 30 timed runs of 10000 images, batch size 1000
+  run 1/30: 20.1 s (about 9m43s left)
+  run 2/30: 18.9 s (about 8m50s left)
+  run 3/30: 18.1 s (about 8m8s left)
+  run 4/30: 20.8 s (about 9m1s left)
+  run 5/30: 23.1 s (about 9m37s left)
+  run 6/30: 23.0 s (about 9m12s left)
+  run 7/30: 18.1 s (about 6m56s left)
+  run 8/30: 17.2 s (about 6m18s left)
+  run 9/30: 19.2 s (about 6m43s left)
+  run 10/30: 18.5 s (about 6m10s left)
+  run 11/30: 21.3 s (about 6m45s left)
+  run 12/30: 19.4 s (about 5m49s left)
+  run 13/30: 19.7 s (about 5m34s left)
+  run 14/30: 19.7 s (about 5m16s left)
+  run 15/30: 18.8 s (about 4m43s left)
+  run 16/30: 11.8 s (about 2m46s left)
+  run 17/30: 8.2 s (about 1m46s left)
+  run 18/30: 7.5 s (about 1m30s left)
+  run 19/30: 6.7 s (about 1m13s left)
+  run 20/30: 7.0 s (about 1m10s left)
+  run 21/30: 7.4 s (about 1m6s left)
+  run 22/30: 7.4 s (about 59s left)
+  run 23/30: 7.5 s (about 52s left)
+  run 24/30: 7.9 s (about 48s left)
+  run 25/30: 7.9 s (about 40s left)
+  run 26/30: 8.1 s (about 32s left)
+  run 27/30: 10.8 s (about 33s left)
+  run 28/30: 14.1 s (about 28s left)
+  run 29/30: 14.2 s (about 14s left)
+  run 30/30: 17.6 s (about 0s left)
 Measuring single-image latency over 500 requests...
 
-Inference timing on linux amd64 (batch size 1000):
+Inference timing on windows amd64 (batch size 1000):
 
 **Throughput** - full 10000-image test set per run
 
 | Engine | Mean (ms) | Std (ms) | Median (ms) | p95 (ms) | Images/s | vs Go | Runs |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Python + ONNX Runtime | 179.6 | 14.2 | 175.2 | 207.8 | 55684 | 166.5x faster | 30 |
-| Python + PyTorch | 1506.0 | 79.9 | 1515.7 | 1611.6 | 6640 | 19.8x faster | 30 |
-| Go + GoMLX (pure-Go backend) | 29893.0 | 367.8 | 29894.6 | 30498.8 | 335 | 1.0x | 30 |
+| Python + ONNX Runtime | 100.4 | 1.854 | 100.2 | 104.4 | 99585 | 146.1x faster | 30 |
+| Python + PyTorch | 463.6 | 58.1 | 448.9 | 616.4 | 21568 | 31.6x faster | 30 |
+| Go + GoMLX (pure-Go backend) | 14670.7 | 5765.0 | 17392.7 | 22995.3 | 682 | 1.0x | 30 |
 
 **Latency** - one image per call (a single user request)
 
 | Engine | Mean (ms) | Std (ms) | Median (ms) | p95 (ms) | Requests/s | vs Go | Runs |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Python + ONNX Runtime | 0.050 | 0.012 | 0.047 | 0.070 | 20078 | 74.0x faster | 500 |
-| Python + PyTorch | 0.183 | 0.044 | 0.166 | 0.260 | 5454 | 20.1x faster | 500 |
-| Go + GoMLX (pure-Go backend) | 3.688 | 0.828 | 3.451 | 5.144 | 271 | 1.0x | 500 |
+| Python + ONNX Runtime | 0.076 | 0.005 | 0.075 | 0.085 | 13155 | 32.6x faster | 500 |
+| Python + PyTorch | 0.218 | 0.443 | 0.180 | 0.334 | 4593 | 11.4x faster | 500 |
+| Go + GoMLX (pure-Go backend) | 2.481 | 2.161 | 2.053 | 6.668 | 403 | 1.0x | 500 |
 
-Go memory: heap in use 20.4 MB, obtained from OS 337.0 MB, 11016 GCs
-Results written to results
-FINISHED
+Go memory: heap in use 25.2 MB, obtained from OS 682.1 MB, 7724 GCs
+Results and run log written to results
+
+run finished successfully after 8m19s

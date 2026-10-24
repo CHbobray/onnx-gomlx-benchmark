@@ -2,14 +2,14 @@
 
 | Engine | Mean (ms) | Std (ms) | Median (ms) | p95 (ms) | Images/s | vs Go | Runs |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Python + ONNX Runtime | 179.6 | 14.2 | 175.2 | 207.8 | 55684 | 166.5x faster | 30 |
-| Python + PyTorch | 1506.0 | 79.9 | 1515.7 | 1611.6 | 6640 | 19.8x faster | 30 |
-| Go + GoMLX (pure-Go backend) | 29893.0 | 367.8 | 29894.6 | 30498.8 | 335 | 1.0x | 30 |
+| Python + ONNX Runtime | 100.4 | 1.854 | 100.2 | 104.4 | 99585 | 146.1x faster | 30 |
+| Python + PyTorch | 463.6 | 58.1 | 448.9 | 616.4 | 21568 | 31.6x faster | 30 |
+| Go + GoMLX (pure-Go backend) | 14670.7 | 5765.0 | 17392.7 | 22995.3 | 682 | 1.0x | 30 |
 
 **Latency** - one image per call (a single user request)
 
 | Engine | Mean (ms) | Std (ms) | Median (ms) | p95 (ms) | Requests/s | vs Go | Runs |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Python + ONNX Runtime | 0.050 | 0.012 | 0.047 | 0.070 | 20078 | 74.0x faster | 500 |
-| Python + PyTorch | 0.183 | 0.044 | 0.166 | 0.260 | 5454 | 20.1x faster | 500 |
-| Go + GoMLX (pure-Go backend) | 3.688 | 0.828 | 3.451 | 5.144 | 271 | 1.0x | 500 |
+| Python + ONNX Runtime | 0.076 | 0.005 | 0.075 | 0.085 | 13155 | 32.6x faster | 500 |
+| Python + PyTorch | 0.218 | 0.443 | 0.180 | 0.334 | 4593 | 11.4x faster | 500 |
+| Go + GoMLX (pure-Go backend) | 2.481 | 2.161 | 2.053 | 6.668 | 403 | 1.0x | 500 |

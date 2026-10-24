@@ -1,44 +1,44 @@
 {
-  "platform": "linux amd64",
-  "go": "go1.27.3",
+  "platform": "windows amd64",
+  "go": "go1.27.1-X:simd",
   "gomlx_backend": "go",
-  "cpus": 2,
+  "cpus": 12,
   "batch_size": 1000,
   "accuracy": 0.9034,
-  "model_load_ms": 2.478666,
-  "first_run_ms": 30255.24333,
+  "model_load_ms": 1.8679,
+  "first_run_ms": 14833.3713,
   "throughput": {
     "runs": 30,
     "images_per_run": 10000,
-    "mean_ms": 29892.99946226667,
-    "std_ms": 367.8236030935602,
-    "min_ms": 29154.238394,
-    "median_ms": 29894.598773,
-    "p95_ms": 30498.7568,
-    "max_ms": 30607.852261,
-    "images_per_second": 334.52648378837984
+    "mean_ms": 14670.741973333334,
+    "std_ms": 5765.004427022817,
+    "min_ms": 6673.1466,
+    "median_ms": 17392.6916,
+    "p95_ms": 22995.2814,
+    "max_ms": 23076.1387,
+    "images_per_second": 681.6287832051554
   },
   "latency": {
     "runs": 500,
     "images_per_run": 1,
-    "mean_ms": 3.6877227900000027,
-    "std_ms": 0.8279583003674477,
-    "min_ms": 2.657068,
-    "median_ms": 3.4514994999999997,
-    "p95_ms": 5.143654,
-    "max_ms": 8.591283,
-    "images_per_second": 271.1700572265627
+    "mean_ms": 2.4808244,
+    "std_ms": 2.160605506387759,
+    "min_ms": 0,
+    "median_ms": 2.05305,
+    "p95_ms": 6.6679,
+    "max_ms": 10.1806,
+    "images_per_second": 403.09181093188215
   },
   "memory": {
-    "heap_in_use_mb": 20.390625,
-    "total_alloc_mb": 730905.0488204956,
-    "sys_mb": 337.01009368896484,
-    "num_gc": 11016
+    "heap_in_use_mb": 25.21875,
+    "total_alloc_mb": 749581.5942077637,
+    "sys_mb": 682.0734786987305,
+    "num_gc": 7724
   },
   "comparison_with_python": {
     "class_agreement": 1,
     "disagreements": 0,
-    "max_abs_logit_diff": 0.00000762939453125,
-    "mean_abs_logit_diff": 7.639125853893347e-7
+    "max_abs_logit_diff": 0.0000095367431640625,
+    "mean_abs_logit_diff": 7.348022321821191e-7
   }
 }
