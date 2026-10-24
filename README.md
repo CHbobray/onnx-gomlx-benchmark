@@ -111,7 +111,7 @@ Trained for 5 epochs with Adam, it reaches **90.34% test accuracy**. Normalizati
 │   ├── go_component_benchmarks.txt  time and memory of each Go component (go test -bench)
 │   └── onnx-backend/            the same Go run on GoMLX's ONNX Runtime backend
 │
-└── docs/                      AI-assistant dialog: ai-assistant-dialog.md (plain text)
+└── docs/                      AI-assistant dialog: ai-assistant-dialog.pdf and .md (plain text)
 ```
 
 ---
@@ -483,7 +483,7 @@ How the grading criteria are addressed:
 
 ## AI-assistant dialog
 
-The assignment asks for the dialog with the LLM-based tools used. This project was built with help from **Claude** (Anthropic). Every message of that conversation is in [`docs/ai-assistant-dialog.md`](docs/ai-assistant-dialog.md) as plain text, and [`docs/`](docs/) also holds the PDF exported from the chat app.
+The assignment asks for the dialog with the LLM-based tools used. This project was built with help from **Claude** (Anthropic). The full conversation is in [`docs/ai-assistant-dialog.pdf`](docs/ai-assistant-dialog.pdf), with the same record as plain text in [`docs/ai-assistant-dialog.md`](docs/ai-assistant-dialog.md).
 
 ---
 
